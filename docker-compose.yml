@@ -1,0 +1,13 @@
+version: "3.3"
+#--noreload 
+services: 
+    django_app:
+        build: 
+            context: .
+        ports: 
+            - "8000:8000"
+        volumes: 
+            - ./H_dj_task:/H_dj_task
+        command: >
+            sh -c  "python dot.py"
+           # python manage.py runserver 0.0.0.0:8000"
