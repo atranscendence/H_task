@@ -10,6 +10,7 @@ RUN apt-get install 'ffmpeg'\
     'libsm6'\ 
     'libxext6'  -y
 
+#opencv dep
 RUN apt-get install -y \
         build-essential \
         cmake \
@@ -62,7 +63,11 @@ RUN ln -s \
 
 RUN apt-get update 
 RUN apt-get install tesseract-ocr-[rus] -y
+#pillow dep
+RUN apk-get jpeg-dev zlib zlib-dev
+
 RUN pip install tesseract pytesseract tensorflow
+
 
 RUN pip install  --no-cache-dir -r /requirements.txt
 
@@ -70,8 +75,12 @@ RUN mkdir /H_dj_task
 WORKDIR /H_dj_task
 COPY ./H_dj_task /H_dj_task
 
+RUN mkdir -p /vol/web/media
+RUN mkdir -p /vol/web/static
 
-RUN adduser myuser
+RUN adduser -D myuser
+RUN chown -R myuser:myuser /vol/
+RUN chown -R 755 /vol/web
 USER myuser
 #RUN pip install bottle numpy cython pandas
 
