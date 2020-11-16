@@ -63,8 +63,8 @@ RUN ln -s \
 
 RUN apt-get update 
 RUN apt-get install tesseract-ocr-[rus] -y
-#pillow dep
-RUN apk-get jpeg-dev zlib zlib-dev
+#pdf conver dependence
+RUN apt-get install poppler-utils -y
 
 RUN pip install tesseract pytesseract tensorflow
 
@@ -78,7 +78,7 @@ COPY ./H_dj_task /H_dj_task
 RUN mkdir -p /vol/web/media
 RUN mkdir -p /vol/web/static
 
-RUN adduser -D myuser
+RUN adduser myuser
 RUN chown -R myuser:myuser /vol/
 RUN chown -R 755 /vol/web
 USER myuser

@@ -11,3 +11,4 @@ tensorboard-plugin-wit==1.7.0
 tensorflow-estimator>=2.3.0
 termcolor>=1.1.0
 imutils==0.5.3
+pdf2image>=1.14.0 

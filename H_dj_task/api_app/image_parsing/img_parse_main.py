@@ -12,84 +12,83 @@ import numpy as np
 import argparse
 import imutils
 import pytesseract
+from api_app.image_parsing import sig_recog
+from pdf2image import convert_from_path
+import re
 
+# from cStringIO import StringIO
+# from django.core.files.base import ContentFile
 
-def count_signature(img):
-    # threshold
-    signatures = 0
-    th, threshed = cv2.threshold(img, 100, 255,
-                                cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-
-    # findcontours
-    cnts = cv2.findContours(threshed, cv2.RETR_LIST,
-                            cv2.CHAIN_APPROX_SIMPLE)[-2]
-    # filter by area
-    s1 = 3
-    #s2 = 20
-    xcnts = []
-    
-    for cnt in cnts:
-        if s1 < cv2.contourArea(cnt):
-            signatures = signatures+1
-            xcnts.append(cnt)
-    return signatures
+def preprocess_img(img, mode):
+    # sharpen iamge
+    if mode == "thresh":
+        gray = cv2.threshold(gray, 100, 255,
+            cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    # use blure if we need to remove noice
+    elif mode == "blur":
+        gray = cv2.medianBlur(gray, 3)
 
 def text_recognition(image):
-    preprocess = "thresh"
+    # style to mnipulate image if its bad qulity
 
-    # загрузить образ и преобразовать его в оттенки серого
+    # Make sure there only 2 colors black and white
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # проверьте, следует ли применять пороговое значение для предварительной обработки изображения
-    # if preprocess == "thresh":
-    #     gray = cv2.threshold(gray, 100, 255,
-    #         cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    # если нужно медианное размытие, чтобы удалить шум
-    # elif preprocess == "blur":
-    #     gray = cv2.medianBlur(gray, 3)
-
-    # сохраним временную картинку в оттенках серого, чтобы можно было применить к ней OCR
-
+    # save tmp image in png for OCR
     filename = "{}.png".format(os.getpid())
     cv2.imwrite(filename, gray)
 
-    # загрузка изображения в виде объекта image Pillow, применение OCR, а затем удаление временного файла
-    text = pytesseract.image_to_string(Image.open(filename),lang='rus')
+    # load image Pillow, use OCR, then delete tmp file.png
+    text = pytesseract.image_to_string(Image.open(filename), lang='rus')
     os.remove(filename)
     return text
-    
 
-def get_sights(obj):
-    #img = Image.open(obj.image)
 
-    image = cv2.imread(obj.image.path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lower = np.array([90, 38, 0])
-    upper = np.array([145, 255, 255])
-    mask = cv2.inRange(image, lower, upper)
-    mask = cv2.blur(mask,(50,50))
+def get_sights(obj, doc_type, doc_format,inner_serializer):
+    sigh_number = 0
+    image = None
 
-    # mask = cv2.bitwise_not(mask)
-    thresh = cv2.erode(mask, None, iterations=2)
-    thresh = cv2.dilate(thresh, None, iterations=4)
-    mask = cv2.addWeighted( mask, 64, mask, 0, 64)
+    if (doc_format == 'pdf'):
+        pil_image = convert_from_path(obj.image.path, 500)[0]
+        image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+    else:
+        image = cv2.imread(obj.image.path)
 
-    signatures_num=(count_signature(mask))
-   
-    obj.sigh_number = signatures_num
-    obj.parse_text = text_recognition(image)
+    doc_text = text_recognition(image)
+    words_num = len(re.findall(r'[а-яА-Я]+', doc_text))
+    if (words_num < 5):
+        # simple check its its documents by looking if there any words on image
+        obj.delete()
+        response = {"Message": 'Неправильный формат документа', }
+        return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    if (doc_type == 'Advanced'):
+        sig_mask = sig_recog.get_singnature_advanced(image)
+        sigh_number = sig_recog.count_signature(sig_mask)
+    elif (doc_type == 'Standart'):
+        sig_mask = sig_recog.get_singnature_standart(image)
+        sigh_number = sig_recog.count_signature(sig_mask)
+    else:
+        """only text recognition"""
+        pass
+
+    # save png for signature 
+    filename = "Sinatures_file_{}.png".format(obj.image.name.split('/')[-1].split('.')[0])
+    filepath = os.path.join('uploads/docs',filename)
+    cv2.imwrite(filepath, sig_mask)   
+
+  
+    # get detail information from img and save them in model
+    obj.sigh_number = sigh_number
+    obj.parse_text = doc_text
+    obj.sig_in_image = filepath
+
+
+
     obj.save()
-    response = {"status_code": status.HTTP_200_OK,
-                     "Подписи":  obj.sigh_number,
-                     "Created" : obj.req_time,
-                    } 
-
-    return Response(response)
-
-
-
-
-
-
-
-
+    
+    # build response
+    response = {"Подписи": obj.sigh_number, 
+                "Signatures" :  inner_serializer(obj).data['sig_in_image'],
+                "Распознанный текст": obj.parse_text,    
+                }
+    return Response(response, status=status.HTTP_200_OK)

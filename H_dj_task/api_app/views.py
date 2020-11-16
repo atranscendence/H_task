@@ -8,58 +8,42 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from api_app import serializers
 from rest_framework import viewsets, mixins
-from api_app.image_parsing import img_parse_main 
+from api_app.image_parsing import img_parse_main
+
+
 class DocumentsViewSet(viewsets.ModelViewSet):
-    """Manage documents in the database"""
-    http_method_names = ['get', 'post']
-    serializer_class = serializers.DocumentSerializer
-    queryset = Documents.objects.all()
+	"""Manage documents in the database"""
+	http_method_names = ['get', 'post']
+	serializer_class = serializers.DocumentSerializer
+	queryset = Documents.objects.all()
 
-    # authentication_classes = (TokenAuthentication,)
-    # permission_classes = (IsAuthenticated,)
+	# authentication_classes = (TokenAuthentication,)
+	# permission_classes = (IsAuthenticated,)
 
-    # def perform_create(self, serializer):
+		
+	def create(self, request):
+		doc = request.data
+		doc_type = request.query_params.get('doc_type', 'Advanced')
 
-    #     serializer.save(user=self.request.user)
-   
-    def create(self, request):
-        doc = request.data
-        serializer =  serializers.DocumentSerializer(data=doc)
-        if serializer.is_valid():     
-            obj = serializer.save(user=self.request.user) 
-            return img_parse_main.get_sights(obj)
-        else:
-            return Response(
-                serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        # response = {"status_code": status.HTTP_200_OK,
-        #             "message": "Successfully created",
-        #             }
+		serializer = self.get_serializer(data=doc)
 
-        # return Response(response)
+		if serializer.is_valid():
+			valid_formats = ['jpg','png','pdf']
+			img_format = doc['image'].name.split('.')[-1]
+			if (img_format in valid_formats):
+				obj = serializer.save(user=self.request.user)
 
-    def get_queryset(self):
-        """Return objects for the curent authenticated user only"""
-        return self.queryset.filter(user=self.request.user)
+				return img_parse_main.get_sights(obj, doc_type,img_format,self.get_serializer)
 
-    # @action(methods=['POST'],detail=False,url_path='upload')
-    # def upload_doc(self,request,pk=None):
-    #     """Upload doc"""
-    #     doc = self.get_object()
-    #     serializer = self.get_serializer(
-    #         doc,
-    #         data=request.data
-    #     )
-    #     print(request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(
-    #             serializer.data.sigh_number,
-    #             status=status.HTTP_200_OK
-    #         )
+			else:
+				response = {"message": "Wrong file type",}
+				return Response(response,status=status.HTTP_400_BAD_REQUEST)
+		else:
+			return Response(
+				serializer.errors,
+				status=status.HTTP_400_BAD_REQUEST,
+			)
 
-    #         return Response(
-    #             serializer.errors,
-    #             status=status.HTTP_400_BAD_REQUEST
-    #         )
+	def get_queryset(self):
+		"""Return objects for the curent authenticated user only"""
+		return self.queryset.filter(user=self.request.user)

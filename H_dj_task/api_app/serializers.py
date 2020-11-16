@@ -9,5 +9,5 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Documents
-        fields = ('sigh_number','image','req_time','parse_text',)
-        read_only_fields = ('sigh_number','req_time','parse_text',)
+        fields = ('sigh_number','image','req_time','parse_text','sig_in_image',)
+        read_only_fields = ('sigh_number','req_time','parse_text','sig_in_image',)
