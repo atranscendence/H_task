@@ -4,7 +4,6 @@ from rest_framework import status
 from PIL import Image
 from django.conf import settings
 import os
-import numpy as np
 import cv2
 from imutils import contours
 from skimage import measure
@@ -19,14 +18,16 @@ import re
 # from cStringIO import StringIO
 # from django.core.files.base import ContentFile
 
+
 def preprocess_img(img, mode):
     # sharpen iamge
     if mode == "thresh":
-        gray = cv2.threshold(gray, 100, 255,
-            cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        gray = cv2.threshold(img, 100, 255,
+                             cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     # use blure if we need to remove noice
     elif mode == "blur":
         gray = cv2.medianBlur(gray, 3)
+
 
 def text_recognition(image):
     # style to mnipulate image if its bad qulity
@@ -43,7 +44,7 @@ def text_recognition(image):
     return text
 
 
-def get_sights(obj, doc_type, doc_format,inner_serializer):
+def get_sights(obj, doc_type, doc_format, inner_serializer):
     sigh_number = 0
     image = None
 
@@ -71,24 +72,22 @@ def get_sights(obj, doc_type, doc_format,inner_serializer):
         """only text recognition"""
         pass
 
-    # save png for signature 
-    filename = "Sinatures_file_{}.png".format(obj.image.name.split('/')[-1].split('.')[0])
-    filepath = os.path.join('uploads/docs',filename)
-    cv2.imwrite(filepath, sig_mask)   
+    # save png for signature
+    filename = "Sinatures_file_{}.png".format(
+        obj.image.name.split('/')[-1].split('.')[0])
+    filepath = os.path.join('uploads/docs', filename)
+    cv2.imwrite(filepath, sig_mask)
 
-  
     # get detail information from img and save them in model
     obj.sigh_number = sigh_number
     obj.parse_text = doc_text
     obj.sig_in_image = filepath
 
-
-
     obj.save()
-    
+
     # build response
-    response = {"Подписи": obj.sigh_number, 
-                "Signatures" :  inner_serializer(obj).data['sig_in_image'],
-                "Распознанный текст": obj.parse_text,    
+    response = {"Подписи": obj.sigh_number,
+                "Signatures": inner_serializer(obj).data['sig_in_image'],
+                "Распознанный текст": obj.parse_text,
                 }
     return Response(response, status=status.HTTP_200_OK)

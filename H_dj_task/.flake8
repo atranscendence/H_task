@@ -6,4 +6,5 @@ exclude =
     settings.py
 ignore = 
     F401,
-    W503
+    W503,
+    W191

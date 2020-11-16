@@ -10,5 +10,4 @@ app_name = 'api_app'
 
 urlpatterns = [
     path('', include(router.urls))
-    #path('upload/', DocumentsViewSet.as_view()),
 ]
