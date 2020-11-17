@@ -48,24 +48,29 @@ def get_sights(obj, doc_type, doc_format, inner_serializer):
     sigh_number = 0
     image = None
 
+    # Convert if format is pdf
     if (doc_format == 'pdf'):
         pil_image = convert_from_path(obj.image.path, 500)[0]
         image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
     else:
         image = cv2.imread(obj.image.path)
 
+    # Recongnise any text on document then look for words in it
     doc_text = text_recognition(image)
     words_num = len(re.findall(r'[а-яА-Я]+', doc_text))
     if (words_num < 5):
-        # simple check its its documents by looking if there any words on image
+        # simple check documents by looking if there any words on image
         obj.delete()
         response = {"Message": 'Неправильный формат документа', }
         return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
+    # Scan depend on type of document
     if (doc_type == 'Advanced'):
+        # Use connected component analysis
         sig_mask = sig_recog.get_singnature_advanced(image)
         sigh_number = sig_recog.count_signature(sig_mask)
     elif (doc_type == 'Standart'):
+        # Use color masking
         sig_mask = sig_recog.get_singnature_standart(image)
         sigh_number = sig_recog.count_signature(sig_mask)
     else:
@@ -87,7 +92,7 @@ def get_sights(obj, doc_type, doc_format, inner_serializer):
 
     # build response
     response = {"Подписи": obj.sigh_number,
-                "Signatures": inner_serializer(obj).data['sig_in_image'],
+                "Изображение подписи": inner_serializer(obj).data['sig_in_image'],
                 "Распознанный текст": obj.parse_text,
                 }
     return Response(response, status=status.HTTP_200_OK)

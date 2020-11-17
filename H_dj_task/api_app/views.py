@@ -17,6 +17,7 @@ class DocumentsViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.DocumentSerializer
     queryset = Documents.objects.all()
 
+    # Enable token authentication
     # authentication_classes = (TokenAuthentication,)
     # permission_classes = (IsAuthenticated,)
 

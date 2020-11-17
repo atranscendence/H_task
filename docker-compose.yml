@@ -1,5 +1,5 @@
 version: "3.3"
-#--noreload 
+#--noreload  python manage.py populate_history --auto && python manage.py makemigrations && python manage.py migrate && 
 services: 
     django_app:
         build: 
@@ -9,4 +9,5 @@ services:
         volumes: 
             - ./H_dj_task:/H_dj_task
         command: >
-            sh -c  "python manage.py runserver 0.0.0.0:8000"
+            sh -c  "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+            
